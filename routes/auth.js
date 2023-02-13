@@ -43,7 +43,7 @@ router.get("/microsoft", passport.authenticate("microsoft", {  prompt: 'select_a
 router.get(
   "/microsoft/callback",
   passport.authenticate("microsoft", {
-    successRedirect: 'http://localhost:5173/main_page',
+    successRedirect: 'https://revica-payment.vercel.app/main_page',
     failureRedirect: "/login/failed",
   })
 );
