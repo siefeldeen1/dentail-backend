@@ -1,9 +1,9 @@
 const router = require("express").Router();
 const passport = require("passport");
 
-// const CLIENT_URL = "https://revica-payment.vercel.app/main_page";
+const CLIENT_URL = "https://revica-payment.vercel.app/main_page";
 
-const CLIENT_URL = "http://localhost:5173/main_page";
+// const CLIENT_URL = "http://localhost:5173/main_page";
 
 router.get("/login/success", (req, res) => {
   if (req.user) {
