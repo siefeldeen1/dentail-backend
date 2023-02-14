@@ -164,8 +164,8 @@ passport.use(new MicrosoftStrategy({
 passport.use(
   new FacebookStrategy(
     {
-      clientID: process.env.FB_ID_KEY,
-      clientSecret: process.env.FB_SECRET_KEY,
+      clientID: "871170780851328",
+      clientSecret: "7bd066491418b506b1fd1b5889d16c24",
       callbackURL: "/auth/facebook/callback",
     },
     function (accessToken, refreshToken, profile, done) {
