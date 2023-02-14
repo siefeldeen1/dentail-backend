@@ -48,7 +48,7 @@ router.get(
   })
 );
 
-router.get("/facebook", passport.authenticate("facebook", { scope: ["publish_actions"] }));
+router.get("/facebook", passport.authenticate("facebook"));
 // router.get("/facebook", passport.authenticate("facebook", { scope: ["profile"] }));
 
 router.get(
