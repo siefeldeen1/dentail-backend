@@ -1,9 +1,9 @@
 const router = require("express").Router();
 const passport = require("passport");
 
-const CLIENT_URL = "https://revica-payment.vercel.app/main_page";
+// const CLIENT_URL = "https://revica-payment.vercel.app/main_page";
 
-// const CLIENT_URL = "http://localhost:5173/main_page";
+const CLIENT_URL = "http://localhost:5173/main_page";
 
 router.get("/login/success", (req, res) => {
   if (req.user) {
@@ -43,12 +43,12 @@ router.get("/microsoft", passport.authenticate("microsoft", {  prompt: 'select_a
 router.get(
   "/microsoft/callback",
   passport.authenticate("microsoft", {
-    successRedirect: 'https://revica-payment.vercel.app/main_page',
+    successRedirect: CLIENT_URL,
     failureRedirect: "/login/failed",
   })
 );
 
-router.get("/facebook", passport.authenticate("facebook", { scope: ["profile"] }));
+router.get("/facebook", passport.authenticate("facebook"));
 
 router.get(
   "/facebook/callback",
