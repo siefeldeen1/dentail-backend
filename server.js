@@ -16,6 +16,10 @@ const authRoute = require("./routes/auth");
 const cookieSession = require("cookie-session");
 const passportSetup = require("./passport");
 
+const dummy = require('./dummy.json')
+const dummy2 = require('./dummy2.json')
+
+
 app.use(
   cookieSession({ name: "session", keys: ["lama"], maxAge: 24 * 60 * 60 * 100 })
 );
@@ -32,10 +36,17 @@ app.use(passport.session());
 //     password:"pscale_pw_u2qNamIp6LGUrr8B4Ekc85vILdtUUB1Px1gzRslsubb",
 //     database:"login_db"
 // })
+// const connection = mysql.createPool({
+//     host:"aws-eu-west-2.connect.psdb.cloud",
+//     user:"5md95ivkiw85id6l0bau",
+//     password:"pscale_pw_TGZSa8SSGRElvxRB6jQgakzpiwpyRpoPwY7Jlk0VIx",
+//     database:"login_db"
+// })
 
 app.use("/auth", authRoute);
 
-const connection = mysql.createPool('mysql://m75jecg6xa68oswmo9lr:pscale_pw_u2qNamIp6LGUrr8B4Ekc85vILdtUUB1Px1gzRslsubb@aws-eu-west-2.connect.psdb.cloud/login-data?ssl={"rejectUnauthorized":true}')
+const connection = mysql.createPool('mysql://5md95ivkiw85id6l0bau:pscale_pw_TGZSa8SSGRElvxRB6jQgakzpiwpyRpoPwY7Jlk0VIx@aws-eu-west-2.connect.psdb.cloud/dentist?ssl={"rejectUnauthorized":true}')
+// const connection = mysql.createPool('mysql://m75jecg6xa68oswmo9lr:pscale_pw_u2qNamIp6LGUrr8B4Ekc85vILdtUUB1Px1gzRslsubb@aws-eu-west-2.connect.psdb.cloud/login-data?ssl={"rejectUnauthorized":true}')
 
 // passport.use(new FacebookStrategy({
 //   clientID: process.env.FB_ID_KEY,
@@ -51,72 +62,10 @@ const connection = mysql.createPool('mysql://m75jecg6xa68oswmo9lr:pscale_pw_u2qN
 
 
 
-// passport.use(new GoogleStrategy({
-//     clientID: process.env.GOOGLE_CLIENT_ID,
-//     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-//     callbackURL: "http://127.0.0.1:8082/auth/google/callback",
-//     scope: ['profile'] 
-//   },
-//   function(accessToken, refreshToken, profile) {
-
-//   console.log(profile.id,profile.displayName);
-
-
-//   const id = profile.id
-//   const displayName = profile.displayName
-
-//   const sql = "SELECT * FROM `login-data`.google_creds WHERE id = ?"
-
-//   connection.query(sql,[id],(err,data)=>{
-
-//     if(err){
-//       console.log(err);
-//       res.status(500).send(err)
-//     }
-
-//     if(data){
-//     console.log('1');
-//             if(data.length == 1){
-//       // res.json({message:"User already exists"})
-//     }else{
-  
-//       const sql = "INSERT INTO `login-data`.google_creds (id,displayname) VALUES (?,?)"
-
-//       connection.query(sql,[id,displayName],(err,data)=>{
-//         if(err){
-//           console.log('2');
-//           console.log(err);
-//           // res.status(500).send(err)
-//         }
-
-//         if(data){
-//           console.log('3');
-//           // res.json({message:"user added"})
-//         }
-        
-
-//       })
-
-//     }
-
-//     }
-   
-
-
-
-//   })
-
-//     // User.findOrCreate({ googleId: profile.id }, function (err, user) {
-//     // });
-//   }
-// ));
 
 
 app.post('/signup',(req,res)=>{
     const username = req.body.username
-
-   
-    
     const password = req.body.password
   
     const sql = "SELECT * FROM `login-data`.login WHERE Email = ?"
@@ -131,7 +80,7 @@ app.post('/signup',(req,res)=>{
       if(data){
 
               if(data.length == 1){
-        res.json({message:"User already exists"})
+        res.status(401).json({message:"User already exists"})
       }else{
     
         const sql = "INSERT INTO login (Email,password) VALUES (?,?)"
@@ -165,6 +114,43 @@ app.post('/signup',(req,res)=>{
 })
 
 
+app.post('/patient_details',(req,res)=>{
+
+  const Name = req.body.Name
+  const last_name = req.body.last_name
+  const email = req.body.email
+  const phone = req.body.phone
+  const country = req.body.country
+  const address = req.body.address
+  const state = req.body.state
+  const city = req.body.city
+  const zip_code = req.body.zip_code
+  const birth = req.body.birth
+  const emergency  = req.body.emergency 
+  const preference = req.body.preference
+  const gender = req.body.gender
+  const guardian = req.body.guardian
+  const patient_id  = req.body.patient_id 
+  const notes  = req.body.notes 
+
+  console.log(Date);
+
+  const sql = "INSERT INTO  dentist.patient_detials (`name`,`last_name`,`email`,`phone`,`country`,`state`,`city`,`zip_code`,`address`,`birth_date`,`emergency_contact`,`preference`,`gender`,`guardian`,`patient_id`,`notes`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+  connection.query(sql,[Name,last_name,email,phone,country,state,city,zip_code,address,birth,emergency,preference,gender,guardian,patient_id,notes],(err,data)=>{
+    if(err){
+      console.log(err);
+      res.status(500).send(err)
+    }
+
+    if(data){
+      res.json({message:"user added"})
+    }
+    
+
+  })
+})
+
+
 
 
 app.post('/login',(req,res)=>{
@@ -188,50 +174,159 @@ app.post('/login',(req,res)=>{
   })
 })
 
+app.post('/insert',(req,res)=>{
+  const Date = req.body.Date
+  const Patient_Name = req.body.Patient_Name
+  const Practice = req.body.Practice
+  const Lab = req.body.Lab
+  const Doctor = req.body.Doctor
+  const Radiologist  = req.body.Radiologist 
 
+  console.log(Date);
 
-// app.get('/auth/facebook',
-//   passport.authenticate('facebook'));
+  const sql = "INSERT INTO dentist.form_det (`date`,`patient`,`practice`,`Lab`,`Doctor`,`Radiologist`) VALUES (?,?,?,?,?,?)"
+  connection.query(sql,[Date,Patient_Name,Practice,Lab,Doctor,Radiologist],(err,data)=>{
+    if(err){
+      console.log(err);
+      res.status(500).send(err)
+    }
 
-  // app.get('/login/facebook', passport.authenticate('facebook', {
-  //   scope: [ 'email', 'user_location' ]
-  // }));
-
-// app.get('/auth/facebook/app',
-//   passport.authenticate('facebook', { failureRedirect: '/login' }),
-//   function(req, res) {
-//     // Successful authentication, redirect home.
-//     res.redirect('/');
-//   });
-
-  // app.get('/auth/google',
-  // passport.authenticate('google', { scope: ['profile'] }));
-
-
-
-
-
-  // already commenteed
-
-// app.get('/auth/google/callback', 
-//   passport.authenticate("google", {
+    if(data){
+      res.json({message:"user added"})
+    }
     
-//   successRedirect: "http://127.0.0.1:5173/",
-//   failureRedirect: "http://127.0.0.1:5173/",
-//   })
-//   ),
+
+  })
+})
+
+
+app.get('/Search',(req,res)=>{
+
+  const name = req.headers.name
+  const last_name = req.headers.last_name
+  const phone = req.headers.phone
+  const birth = req.headers.birth
+
+  // console.log(name,last_name,phone,birth);
+  const sql =  `SELECT * FROM dentist.patient_detials WHERE name LIKE '${name}%' AND phone LIKE '${phone}%' AND last_name LIKE '${last_name}%' AND birth_date LIKE '${birth}%'  `
+  // const sql =  "SELECT * FROM dentist.patient_detials WHERE name LIKE"+ ` '%${name}%' or phone LIKE '%${phone}%' or last_name LIKE '%${last_name}%' or birth_date LIKE '%${birth}%'  `
+
+    console.log(sql);
+
+  connection.query(sql,(err,data)=>{
+   if(err){
+       console.log(err);
+       // res.send(err)
+   }
+ 
+   if(data){
+    console.log("data",data);
+       if(data.length > 0){
+           res.send(data)
+       }else{
+        res.send([{}])
+       }
+   }
+ })
+
+})
+
+
+app.get('/delete',(req,res)=>{
+  const name = req.headers.name
+  const last_name = req.headers.last_name
+  const phone = req.headers.phone
+  const birth = req.headers.birth
+
+  const sql =  `DELETE FROM dentist.patient_detials WHERE name LIKE '${name}%' AND phone LIKE '${phone}%' AND last_name LIKE '${last_name}%' AND birth_date LIKE '${birth}%'  `
+
+  connection.query(sql,(err,data)=>{
+    if(err){
+        console.log(err);
+        // res.send(err)
+    }
+  
+    if(data){
+     console.log("data",data);
+        if(data){
+          res.status(200).json({message:"deleted"})
+        }
+    }
+  })
+})
+
+app.get('/find',(req,res)=>{
+  const search_name = req.headers.search_name
+
+//  const sql =  "SELECT * FROM dentist.form_det WHERE date LIKE `%${search_name}%` or patient LIKE `%${search_name}%' or practice LIKE `%${search_name}%'"
+ 
+ const sql =  "SELECT * FROM dentist.form_det WHERE date LIKE"+ ` '%${search_name}%' or patient LIKE '%${search_name}%' or practice LIKE '%${search_name}%'  `
+ 
+ connection.query(sql,(err,data)=>{
+  if(err){
+      console.log(err);
+      // res.send(err)
+  }
+
+  if(data){
+      if(data.length > 0){
+          res.send(data)
+      }
+  }
+})
+})
+
+app.put('/update',(req,res)=>{
+  const Name = req.body.Name
+  const last_name = req.body.last_name
+  const email = req.body.email
+  const phone = req.body.phone
+  const country = req.body.country
+  const address = req.body.address
+  const state = req.body.state
+  const city = req.body.city
+  const zip_code = req.body.zip_code
+  const birth = req.body.birth
+  const emergency  = req.body.emergency 
+  const preference = req.body.preference
+  const gender = req.body.gender
+  const guardian = req.body.guardian
+  const patient_id  = req.body.patient_id 
+  const notes  = req.body.notes 
+  
+  const update_name = req.body.update_name 
+  const update_last_name= req.body.update_last_name
+  const update_phone =req.body.update_phone
+  const update_birth = req.body.update_birth
+
+
+  const sql =  ` UPDATE dentist.patient_detials  SET name= ? ,last_name = ?,email = ?,phone = ?,country = ?,state = ?,city = ?,zip_code = ?,address =?,birth_date = ?,
+    emergency_contact = ?,preference = ?,gender = ?,guardian = ?,patient_id = ?,notes = ?  WHERE name LIKE '${update_name}' AND phone LIKE '${update_phone}' 
+   AND last_name LIKE '${update_last_name}' AND birth_date LIKE '${update_birth}'`  
+  // SET ContactName='Alfred Schmidt', City='Frankfurt' WHERE CustomerID=1;
+ connection.query(sql,[Name,last_name,email,phone,country,state,city,zip_code,address,birth,emergency,preference,gender,guardian,patient_id,notes],(err,data)=>{
+  if(err){
+      console.log(err);
+      // res.send(err)
+  }
+
+  if(data){
+    res.json({message:"patient Updated"})
+  }
+})
+
+})
+    
+    
+
+app.get('/json_test',(req,res)=>{
+
+res.json(dummy2)
+
+})
 
 
 
-
-
-
-// app.get('/auth/google/callback', 
-//   passport.authenticate('google', { failureRedirect: '/login' }),
-//   function(req, res) {
-//     // Successful authentication, redirect home.
-//     res.status(200).send("ji")
-//   });
 
 
 app.listen(8082,()=>{
