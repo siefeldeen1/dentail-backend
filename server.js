@@ -326,6 +326,51 @@ res.json(dummy2)
 })
 
 
+app.post('/appointment_date',(req,res)=>{
+  const title = req.body.title
+  const start = req.body.start
+  const end = req.body.end
+  const descr = req.body.descr
+  
+
+   const sql = "INSERT INTO  dentist.schedule_data (`title`,`start`,`end`,`descr`) VALUES (?,?,?,?)"
+  connection.query(sql,[title,start,end,descr],(err,data)=>{
+    if(err){
+      console.log(err)
+      res.status(500).send(err)
+    } 
+    if(data){
+      res.json({message:"new appointment added"})
+    }
+  })
+
+})
+
+app.get("/dates_appoint",(req,res)=>{
+  const sql = "SELECT * FROM dentist.schedule_data;"
+  connection.query(sql,(err,data)=>{
+    if(err){
+      console.log(err)
+      res.status(500).send(err)
+    }
+    if(data){
+      res.status(200).send(data)
+    }
+  })
+})
+
+app.put("/dates_appoint",(req,res)=>{
+  const sql = "UPDATE dentist.schedule_data SET start=?,end=? WHERE id = ?"
+  connection.query(sql,[req.body.start,req.body.end,req.body.id],(err,data)=>{
+    if(err){
+      console.log(err)
+      res.status(500).send(err)
+    }
+    if(data){
+      res.status(200).send(data)
+    }
+  })
+})
 
 
 
