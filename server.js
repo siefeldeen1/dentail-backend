@@ -15,9 +15,14 @@ var GoogleStrategy = require('passport-google-oauth20').Strategy;
 const authRoute = require("./routes/auth");
 const cookieSession = require("cookie-session");
 const passportSetup = require("./passport");
-
+const path = require("path");
+const formidable = require('formidable');
+const mv = require("mv");
+const fs = require("fs");
+const { v4: uuidv4 } = require('uuid');
 const dummy = require('./dummy.json')
 const dummy2 = require('./dummy2.json')
+const { json } = require('express')
 
 
 app.use(
@@ -27,7 +32,7 @@ app.use(cors())
 app.use(express.json())
 
 app.use(express.urlencoded({ extended: true }))
-
+app.use(express.static(__dirname))
 app.use(passport.initialize());
 app.use(passport.session());
 // const connection = mysql.createPool({
@@ -65,12 +70,12 @@ const connection = mysql.createPool('mysql://5md95ivkiw85id6l0bau:pscale_pw_TGZS
 
 
 app.post('/signup',(req,res)=>{
-    const username = req.body.username
+    const email = req.body.username
     const password = req.body.password
   
-    const sql = "SELECT * FROM `login-data`.login WHERE Email = ?"
+    const sql = "SELECT * FROM dentist.login WHERE Email = ?"
   
-    connection.query(sql,[username],(err,data)=>{
+    connection.query(sql,[email],(err,data)=>{
   
       if(err){
         console.log(err);
@@ -82,26 +87,27 @@ app.post('/signup',(req,res)=>{
               if(data.length == 1){
         res.status(401).json({message:"User already exists"})
       }else{
-    
-        const sql = "INSERT INTO login (Email,password) VALUES (?,?)"
+          res.status(200).json({message:"ok"})
+        // const sql = "INSERT INTO dentist.login (Email,password) VALUES (?,?)"
 
-        bcrypt.genSalt(saltsRounds, function(err, salt) {
-          bcrypt.hash(password, salt, function(err, hash) {
-            connection.query(sql,[username,hash],(err,data)=>{
-              if(err){
-                console.log(err);
-                res.status(500).send(err)
-              }
-      
-              if(data){
-                res.json({message:"user added"})
-              }
-              
-      
-            })
-      
-           });
-        });
+        // bcrypt.genSalt(saltsRounds, function(err, salt) {
+        //       bcrypt.hash(password, salt, function(err, hash) {
+        //         connection.query(sql,[email,hash],(err,data)=>{
+        //           if(err){
+        //             console.log(err);
+        //             res.status(500).send(err)
+        //           }
+          
+        //           if(data){
+        //             res.json({message:"user added"})
+        //           }
+                  
+          
+        //         })
+          
+        //        });
+        //     });
+
         
       }
 
@@ -111,7 +117,159 @@ app.post('/signup',(req,res)=>{
   
   
     })
+
+
+
 })
+
+
+
+
+app.post('/login',(req,res)=>{
+  const email = req.body.email
+  const password = req.body.password
+
+  const sql = "SELECT * FROM dentist.login WHERE Email = ? "
+
+  connection.query(sql,[email],(err,data)=>{
+    if(err){
+      console.log(err)
+      res.status(500).send(err)
+    }
+    if(data){
+      console.log(data);
+      if(data.length == 1){
+        
+        const hashed_password = data[0].password
+
+        if(bcrypt.compareSync(password,hashed_password)){
+            
+            res.status(200).json({message:"allowed",clinic_id:data[0].clinic_id,clinic_name:data[0].clinic_name})
+          } else{
+            res.status(400).json({message:"password or email is incorrect"})
+          }
+
+         
+    
+       
+        
+      }else{
+        res.status(400).json({message:"password or email is incorrect"})
+      }
+  }})
+})
+
+
+app.post("/uploadImg",(req,res)=>{
+
+
+  const form = new formidable.IncomingForm()
+
+  form.parse(req, (err, fields, files) => {
+    if (err) {
+      console.log(err);
+      return
+    }
+    const ext = path.extname(files.photo.originalFilename)
+    const videosPath = "images/patients/"
+    const oldPath = files.photo.filepath
+    const newPath = videosPath + uuidv4() + ext
+
+    if (!fs.existsSync(videosPath)) {
+      fs.mkdir(videosPath, (err) => {
+        if (err) {
+          console.log(err);
+          return
+
+        }
+      })
+    }
+    mv(oldPath, newPath, (err) => {
+      if (err) {
+        console.log(err);
+        return
+      }
+
+      res.json({message:"uploaded",path:newPath})
+
+     
+      })
+
+    })
+
+
+})
+
+
+app.post('/clinic_info',(req,res)=>{
+
+             const business = req.body.business
+             const first_name = req.body.first_name
+             const last_name = req.body.last_name
+             const email_off = req.body.email_off
+             const phone_off = req.body.phone_off
+             const email = req.body.email
+             const phone = req.body.phone
+             const country = req.body.country
+             const state = req.body.state
+             const city = req.body.city
+             const zip_code = req.body.zip_code
+             const address = req.body.address
+             const facebook = req.body.facebook
+             const twitter = req.body.twitter
+             const instagram = req.body.instagram
+
+             const acc_email = req.body.acc_email
+             const acc_password = req.body.acc_password
+            console.log(acc_email,acc_password);
+             const sql = "INSERT INTO  dentist.clinic_Info (`business`,`first_name`,`last_name`,`email_off`,`phone_off`,`email`,`phone`,`country`,`state`,`city`,`zip_code`,`address`,`facebook`,`twitter`,`instagram`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+
+             connection.query(sql,[business,first_name,last_name,email_off,phone_off,email,phone,country,state,city,zip_code,address,facebook,twitter,instagram],(err,data)=>{
+              if(err){
+                console.log(err);
+                res.status(500).send(err)
+              }
+          
+              if(data){
+                
+                const sql = 'INSERT INTO dentist.login (`Email`,`password`,`clinic_id`,`clinic_name`) VALUES (?,?,?,?)'
+
+                bcrypt.genSalt(saltsRounds, function(err, salt) {
+                  bcrypt.hash(acc_password.value, salt, function(err, hash) {
+                    connection.query(sql,[acc_email.value, hash, data.insertId, business],(err,data2)=>{
+                      if(err){
+                        console.log(err);
+                        res.status(500).send(err)
+                      }
+              
+                      if(data2){
+                        res.json({message:"clinic is added",clinic_id:data.insertId,clinic_name:business})
+                       console.log(data.insertId);
+                      }
+                      
+              
+                    })
+              
+                   });
+                });
+
+
+
+
+                // connection.query(sql,[data.insertId,business],(err,data2)=>{
+                //   if(err){
+                //     res.status(500).send(err)
+                //   }
+                //   if(data2){
+                //     res.json({message:"clinic is added"})
+                //   }
+                // })
+              
+              }
+            })
+          
+
+            })
 
 
 app.post('/patient_details',(req,res)=>{
@@ -132,11 +290,17 @@ app.post('/patient_details',(req,res)=>{
   const guardian = req.body.guardian
   const patient_id  = req.body.patient_id 
   const notes  = req.body.notes 
+  const clinic_id = req.body.clinic_id
+  const clinic_name = req.body.clinic_name
+  const imgs_arr = req.body.imgs
 
-  console.log(Date);
+  const imgs = JSON.stringify(imgs_arr)
 
-  const sql = "INSERT INTO  dentist.patient_detials (`name`,`last_name`,`email`,`phone`,`country`,`state`,`city`,`zip_code`,`address`,`birth_date`,`emergency_contact`,`preference`,`gender`,`guardian`,`patient_id`,`notes`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-  connection.query(sql,[Name,last_name,email,phone,country,state,city,zip_code,address,birth,emergency,preference,gender,guardian,patient_id,notes],(err,data)=>{
+
+  console.log(clinic_name);
+if(patient_id.length < 1){
+  const sql = "INSERT INTO  dentist.patient_detials (`name`,`last_name`,`email`,`phone`,`country`,`state`,`city`,`zip_code`,`address`,`birth_date`,`emergency_contact`,`preference`,`gender`,`guardian`,`notes`,`clinic_id`,`clinic_name`,`imgs`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+  connection.query(sql,[Name,last_name,email,phone,country,state,city,zip_code,address,birth,emergency,preference,gender,guardian,notes,clinic_id,clinic_name,imgs],(err,data)=>{
     if(err){
       console.log(err);
       res.status(500).send(err)
@@ -148,31 +312,66 @@ app.post('/patient_details',(req,res)=>{
     
 
   })
-})
-
-
-
-
-app.post('/login',(req,res)=>{
-  const username = req.body.username
-  const password = req.body.password
-
-  const sql = "SELECT * FROM `login-data`.login WHERE Email = ? AND password = ?"
-
-  connection.query(sql,[username,password],(err,data)=>{
+}else{
+  const sql = "INSERT INTO  dentist.patient_detials (`name`,`last_name`,`email`,`phone`,`country`,`state`,`city`,`zip_code`,`address`,`birth_date`,`emergency_contact`,`preference`,`gender`,`guardian`,`patient_id`,`notes`,`clinic_id`,`clinic_name`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+  connection.query(sql,[Name,last_name,email,phone,country,state,city,zip_code,address,birth,emergency,preference,gender,guardian,patient_id,notes,clinic_id,clinic_name],(err,data)=>{
     if(err){
-      console.log(err)
+      console.log(err);
       res.status(500).send(err)
     }
 
-    if(data.length == 1){
-        res.status(200).json({message:"a7a"})
-        console.log("success");
-    }else{
-      res.status(401).json({message:"Email or password wrong"})
+    if(data){
+      res.json({message:"user added"})
+    }
+    
+
+  })
+}
+ 
+})
+
+
+app.get('/render_patients',(req,res)=>{
+
+ const clinic_id = req.headers.clinic_id
+ const clinic_name = req.headers.clinic_name
+
+ const sql = `SELECT * FROM dentist.patient_detials WHERE clinic_id LIKE '${clinic_id}%'`
+connection.query(sql,(err,data)=>{
+  if(err){
+    console.log(err);
+    res.status(500).send(err)
+  }
+
+  if(data){
+    res.send(data)
+  }
+})
+
+})
+
+app.get('/patient_Img',(req,res)=>{
+  const clinic_id = req.headers.clinic_id
+  const patient_id = req.headers.patient_id
+  const first = req.headers.first
+  const last = req.headers.last
+
+  const sql =  `SELECT * FROM dentist.patient_detials WHERE name LIKE '${first}%' AND clinic_id LIKE '${clinic_id}%' AND last_name LIKE '${last}%' AND patient_id LIKE '${patient_id}%'  `
+
+  connection.query(sql,(err,data)=>{
+    if(err){
+      console.log(err);
+      res.status(500).send(err)
+    }
+    console.log(sql);
+    if(data){
+      console.log(data);
+      res.send(data)
     }
   })
-})
+  })
+
+
 
 app.post('/insert',(req,res)=>{
   const Date = req.body.Date
@@ -318,10 +517,42 @@ app.put('/update',(req,res)=>{
 })
     
     
+app.post('/comments',(req,res)=>{
+  const comment = req.body.comment
+  const teeth_no = req.body.teeth_no
+
+  const sql = "INSERT INTO dentist.comments (`comment`,`teeth_no`) VALUES(?,?) "
+
+  connection.query(sql,[comment,teeth_no],(err,data)=>{
+    if(err){
+      console.log(err);
+      res.status(500).send(err)
+    }
+
+    if(data){
+      res.json({message:"comment added"})
+    }
+    
+
+  })
+
+})
+
+
 
 app.get('/json_test',(req,res)=>{
 
 res.json(dummy2)
+
+})
+    
+
+app.post('/json_test',(req,res)=>{
+  const data =  req.body.data
+
+
+  console.log(data);
+
 
 })
 

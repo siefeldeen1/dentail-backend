@@ -26,49 +26,49 @@ passport.use(
       callbackURL: "/auth/google/callback",
     },
     function (accessToken, refreshToken, profile, done) {
-        const id = profile.id
-  const displayName = profile.displayName
+      const id = profile.id
+      const displayName = profile.displayName
 
-  const sql = "SELECT * FROM `login-data`.google_creds WHERE id = ?"
+  // const sql = "SELECT * FROM `login-data`.google_creds WHERE id = ?"
 
-  connection.query(sql,[id],(err,data)=>{
+  // connection.query(sql,[id],(err,data)=>{
 
-    if(err){
-      console.log(err);
-      res.status(500).send(err)
-    }
+  //   if(err){
+  //     console.log(err);
+  //     res.status(500).send(err)
+  //   }
 
-    if(data){
-    console.log('1');
-            if(data.length == 1){
-      // res.json({message:"User already exists"})
-    }else{
+  //   if(data){
+  //   console.log('1');
+  //           if(data.length == 1){
+  //     // res.json({message:"User already exists"})
+  //   }else{
   
-      const sql = "INSERT INTO `login-data`.google_creds (id,displayname) VALUES (?,?)"
+  //     const sql = "INSERT INTO `login-data`.google_creds (id,displayname) VALUES (?,?)"
 
-      connection.query(sql,[id,displayName],(err,data)=>{
-        if(err){
-          console.log('2');
-          console.log(err);
-          // res.status(500).send(err)
-        }
+  //     connection.query(sql,[id,displayName],(err,data)=>{
+  //       if(err){
+  //         console.log('2');
+  //         console.log(err);
+  //         // res.status(500).send(err)
+  //       }
 
-        if(data){
-          console.log('3');
-          // res.json({message:"user added"})
-        }
+  //       if(data){
+  //         console.log('3');
+  //         // res.json({message:"user added"})
+  //       }
         
 
-      })
+  //     })
 
-    }
+  //   }
 
-    }
+  //   }
    
 
 
 
-  })
+  // })
       done(null, profile);
     }
   )
@@ -114,46 +114,46 @@ passport.use(new MicrosoftStrategy({
     const id = profile.id
     const displayName = profile.displayName
   
-    const sql = "SELECT * FROM `login-data`.google_creds WHERE id = ?"
+    // const sql = "SELECT * FROM `login-data`.google_creds WHERE id = ?"
   
-    connection.query(sql,[id],(err,data)=>{
+    // connection.query(sql,[id],(err,data)=>{
   
-      if(err){
-        console.log(err);
-        res.status(500).send(err)
-      }
+    //   if(err){
+    //     console.log(err);
+    //     res.status(500).send(err)
+    //   }
   
-      if(data){
-      console.log('1');
-              if(data.length == 1){
-        // res.json({message:"User already exists"})
-      }else{
+    //   if(data){
+    //   console.log('1');
+    //           if(data.length == 1){
+    //     // res.json({message:"User already exists"})
+    //   }else{
     
-        const sql = "INSERT INTO `login-data`.google_creds (id,displayname) VALUES (?,?)"
+    //     const sql = "INSERT INTO `login-data`.google_creds (id,displayname) VALUES (?,?)"
   
-        connection.query(sql,[id,displayName],(err,data)=>{
-          if(err){
-            console.log('2');
-            console.log(err);
-            // res.status(500).send(err)
-          }
+    //     connection.query(sql,[id,displayName],(err,data)=>{
+    //       if(err){
+    //         console.log('2');
+    //         console.log(err);
+    //         // res.status(500).send(err)
+    //       }
   
-          if(data){
-            console.log('3');
-            // res.json({message:"user added"})
-          }
+    //       if(data){
+    //         console.log('3');
+    //         // res.json({message:"user added"})
+    //       }
           
   
-        })
+    //     })
   
-      }
+    //   }
   
-      }
+    //   }
      
   
   
   
-    })
+    // })
       return done(null, profile);
     
   }
@@ -187,22 +187,22 @@ passport.use(
           // res.json({message:"User already exists"})
         }else{
       
-          const sql = "INSERT INTO `login-data`.google_creds (id,displayname) VALUES (?,?)"
+          // const sql = "INSERT INTO `login-data`.google_creds (id,displayname) VALUES (?,?)"
     
-          connection.query(sql,[id,displayName],(err,data)=>{
-            if(err){
-              console.log('2');
-              console.log(err);
-              // res.status(500).send(err)
-            }
+          // connection.query(sql,[id,displayName],(err,data)=>{
+          //   if(err){
+          //     console.log('2');
+          //     console.log(err);
+          //     // res.status(500).send(err)
+          //   }
     
-            if(data){
-              console.log('3');
-              // res.json({message:"user added"})
-            }
+          //   if(data){
+          //     console.log('3');
+          //     // res.json({message:"user added"})
+          //   }
             
     
-          })
+          // })
     
         }
     
