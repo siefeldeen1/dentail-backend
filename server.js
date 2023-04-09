@@ -23,7 +23,7 @@ const { v4: uuidv4 } = require('uuid');
 const dummy = require('./dummy.json')
 const dummy2 = require('./dummy2.json')
 const { json } = require('express')
-
+const Jimp = require('jimp');
 
 app.use(
   cookieSession({ name: "session", keys: ["lama"], maxAge: 24 * 60 * 60 * 100 })
@@ -170,9 +170,9 @@ app.post("/uploadImg",(req,res)=>{
       console.log(err);
       return
     }
-    const ext = path.extname(files.photo.originalFilename)
+    const ext = path.extname(files.image.originalFilename)
     const videosPath = "images/patients/"
-    const oldPath = files.photo.filepath
+    const oldPath = files.image.filepath
     const newPath = videosPath + uuidv4() + ext
 
     if (!fs.existsSync(videosPath)) {
@@ -199,6 +199,69 @@ app.post("/uploadImg",(req,res)=>{
 
 
 })
+
+
+app.post("/imgqulity",async (req,res)=>{
+
+  const img = req.body.img
+
+
+    // img.quality(100 ,async (err, value) => {
+    //   // console.log(JSON.stringify(value));
+    // })
+    // res.send(img.quality(100))
+  
+Jimp.read(`${img}`)
+  .then(image => {
+    image.quality(100).getBase64(Jimp.AUTO, (err, reson) => {
+    // console.log(res)
+    res.json({message:"Updated",img:reson})
+
+  })
+  })
+  .catch(err => {
+    console.log(err);
+    res.status(500).send(err)
+  });
+
+  // const form = new formidable.IncomingForm()
+  // form.parse(req, (err, fields, files) => {
+    
+  //   if (err) {
+  //     console.log(err);
+  //     return
+  //   }
+  //   const ext = path.extname(files.image.originalFilename)
+  //   const videosPath = "images/patients/"
+  //   const oldPath = files.image.filepath
+  //   const newPath = videosPath + uuidv4() + ext
+
+  //   if (!fs.existsSync(videosPath)) {
+  //     fs.mkdir(videosPath, (err) => {
+  //       if (err) {
+  //         console.log(err);
+  //         return
+
+  //       }
+  //     })
+  //   }
+  //   mv(oldPath, newPath, (err) => {
+  //     if (err) {
+  //       console.log(err);
+  //       return
+  //     }
+
+  //     res.json({message:"uploaded",path:newPath})
+
+     
+  //     })
+
+  //   })
+
+
+})
+
+
 
 
 app.post('/clinic_info',(req,res)=>{
@@ -295,12 +358,12 @@ app.post('/patient_details',(req,res)=>{
   const imgs_arr = req.body.imgs
 
   const imgs = JSON.stringify(imgs_arr)
-
+  const data = JSON.stringify(req.body.data)
 
   console.log(clinic_name);
 if(patient_id.length < 1){
-  const sql = "INSERT INTO  dentist.patient_detials (`name`,`last_name`,`email`,`phone`,`country`,`state`,`city`,`zip_code`,`address`,`birth_date`,`emergency_contact`,`preference`,`gender`,`guardian`,`notes`,`clinic_id`,`clinic_name`,`imgs`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-  connection.query(sql,[Name,last_name,email,phone,country,state,city,zip_code,address,birth,emergency,preference,gender,guardian,notes,clinic_id,clinic_name,imgs],(err,data)=>{
+  const sql = "INSERT INTO  dentist.patient_detials (`name`,`last_name`,`email`,`phone`,`country`,`state`,`city`,`zip_code`,`address`,`birth_date`,`emergency_contact`,`preference`,`gender`,`guardian`,`notes`,`clinic_id`,`clinic_name`,`imgs`,`data`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+  connection.query(sql,[Name,last_name,email,phone,country,state,city,zip_code,address,birth,emergency,preference,gender,guardian,notes,clinic_id,clinic_name,imgs,data],(err,data)=>{
     if(err){
       console.log(err);
       res.status(500).send(err)
@@ -331,11 +394,34 @@ if(patient_id.length < 1){
 })
 
 
+app.get('/render_imgs',(req,res)=>{
+
+  const clinic_id = req.headers.clinic_id
+  const clinic_name = req.headers.clinic_name
+  const patient_id = req.headers.patient_id 
+
+  const sql = `SELECT * FROM dentist.patient_detials WHERE clinic_id LIKE '${clinic_id}%' AND patient_id LIKE '${patient_id}'`
+ connection.query(sql,(err,data)=>{
+   if(err){
+     console.log(err);
+     res.status(500).send(err)
+   }
+ 
+   if(data){
+     res.send(data)
+   }
+ })
+ 
+ })
+
+
+
+
 app.get('/render_patients',(req,res)=>{
 
  const clinic_id = req.headers.clinic_id
  const clinic_name = req.headers.clinic_name
-
+  
  const sql = `SELECT * FROM dentist.patient_detials WHERE clinic_id LIKE '${clinic_id}%'`
 connection.query(sql,(err,data)=>{
   if(err){
@@ -562,10 +648,10 @@ app.post('/appointment_date',(req,res)=>{
   const start = req.body.start
   const end = req.body.end
   const descr = req.body.descr
-  
+  const clinic_id = req.body.clinic_id
 
-   const sql = "INSERT INTO  dentist.schedule_data (`title`,`start`,`end`,`descr`) VALUES (?,?,?,?)"
-  connection.query(sql,[title,start,end,descr],(err,data)=>{
+   const sql = "INSERT INTO  dentist.schedule_data (`title`,`start`,`end`,`descr`,`clinic_id`) VALUES (?,?,?,?,?)"
+  connection.query(sql,[title,start,end,descr,clinic_id],(err,data)=>{
     if(err){
       console.log(err)
       res.status(500).send(err)
@@ -578,8 +664,12 @@ app.post('/appointment_date',(req,res)=>{
 })
 
 app.get("/dates_appoint",(req,res)=>{
-  const sql = "SELECT * FROM dentist.schedule_data;"
-  connection.query(sql,(err,data)=>{
+
+    const clinic_id = req.headers.clinic_id
+    const clinic_name = req.headers.clinic_name
+
+  const sql = "SELECT * FROM dentist.schedule_data WHERE `clinic_id`= ?"
+  connection.query(sql,[clinic_id],(err,data)=>{
     if(err){
       console.log(err)
       res.status(500).send(err)
@@ -591,8 +681,28 @@ app.get("/dates_appoint",(req,res)=>{
 })
 
 app.put("/dates_appoint",(req,res)=>{
-  const sql = "UPDATE dentist.schedule_data SET start=?,end=? WHERE id = ?"
-  connection.query(sql,[req.body.start,req.body.end,req.body.id],(err,data)=>{
+
+  const clinic_id = req.body.clinic_id
+
+  const sql = "UPDATE dentist.schedule_data SET start=?,end=?,clinic_id=? WHERE id = ?"
+  connection.query(sql,[req.body.start,req.body.end,req.body.id,clinic_id],(err,data)=>{
+    if(err){
+      console.log(err)
+      res.status(500).send(err)
+    }
+    if(data){
+      res.status(200).send(data)
+    }
+  })
+})
+app.delete("/dates_appoint",(req,res)=>{
+
+  const clinic_id = req.headers.clinic_id
+  const title = req.headers.title
+  const id = req.headers.id
+
+  const sql = "DELETE FROM dentist.schedule_data WHERE `title` = ? AND  `id` = ? AND `clinic_id` = ?"
+  connection.query(sql,[title,id,clinic_id],(err,data)=>{
     if(err){
       console.log(err)
       res.status(500).send(err)
