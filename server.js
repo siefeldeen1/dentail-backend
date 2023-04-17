@@ -13,6 +13,7 @@ const FacebookStrategy = require("passport-facebook").Strategy
 require("dotenv").config();
 var GoogleStrategy = require('passport-google-oauth20').Strategy;
 const authRoute = require("./routes/auth");
+
 const cookieSession = require("cookie-session");
 const passportSetup = require("./passport");
 const path = require("path");
@@ -49,6 +50,7 @@ app.use(passport.session());
 // })
 
 app.use("/auth", authRoute);
+
 
 const connection = mysql.createPool('mysql://5md95ivkiw85id6l0bau:pscale_pw_TGZSa8SSGRElvxRB6jQgakzpiwpyRpoPwY7Jlk0VIx@aws-eu-west-2.connect.psdb.cloud/dentist?ssl={"rejectUnauthorized":true}')
 // const connection = mysql.createPool('mysql://m75jecg6xa68oswmo9lr:pscale_pw_u2qNamIp6LGUrr8B4Ekc85vILdtUUB1Px1gzRslsubb@aws-eu-west-2.connect.psdb.cloud/login-data?ssl={"rejectUnauthorized":true}')
@@ -695,6 +697,24 @@ app.put("/dates_appoint",(req,res)=>{
     }
   })
 })
+app.get("/dates_appoint_info",(req,res)=>{
+
+  const clinic_id = req.headers.clinic_id
+  const title = req.headers.title
+  const id = req.headers.id
+
+  const sql = `SELECT * FROM dentist.schedule_data WHERE title LIKE '${title}' AND  id LIKE '${id}' AND clinic_id LIKE '${clinic_id}'`
+  connection.query(sql,(err,data)=>{
+    if(err){
+      console.log(err)
+      res.status(500).send(err)
+    }
+    if(data){
+      res.status(200).send(data)
+    }
+  })
+})
+
 app.delete("/dates_appoint",(req,res)=>{
 
   const clinic_id = req.headers.clinic_id
@@ -713,7 +733,312 @@ app.delete("/dates_appoint",(req,res)=>{
   })
 })
 
+app.put("/dates_appoint_info",(req,res)=>{
 
+  const clinic_id = req.body.clinic_id
+  const start = req.body.start 
+  const end = req.body.end
+  const id = req.body.id
+  const descr = req.body.descr
+  const title = req.body.title
+  console.log(title);
+
+  const sql = "UPDATE dentist.schedule_data SET start=?,end=?,descr=?,title=?  WHERE id = ? AND clinic_id=? "
+  connection.query(sql,[start,end,descr,title,id,clinic_id],(err,data)=>{
+    if(err){
+      console.log(err)
+      res.status(500).send(err)
+    }
+    if(data){
+      res.status(200).send(data)
+    }
+  })
+})
+
+
+app.post('/teeth_info',(req,res)=>{
+
+              const name = req.body.name
+              const teeth_no = req.body.teeth_no
+              const parameter = req.body.parameter
+              const surface = req.body.surface
+              const stage = req.body.stage
+              const type = req.body.type
+              const patient_name = req.body.patient_name
+              const patient_id = req.body.patient_id
+              const clinic_id = req.body.clinic_id
+              const img_no = req.body.img_no
+              const date = req.body.date
+
+
+     const sql = ("INSERT INTO dentist.teeth_info (`name`,`teeth_no`,`parameter`,`surface`,`stage`,`type`,`patient_name`,`patient_id`,`clinic_id`,`img_no`,`date`) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+     connection.query(sql,[name,teeth_no,parameter,surface,stage,type,patient_name,patient_id,clinic_id,img_no,date],(err,data)=>{
+      if(err){
+        console.log(err)
+        res.status(500).send(err)
+      }
+      if(data){
+        res.status(200).send(data)
+      }
+    })
+})
+
+app.post('/teeth_info_first',(req,res)=>{
+
+              const name = req.body.name
+              const teeth_no = req.body.teeth_no
+              const parameter = req.body.parameter
+              const surface = req.body.surface
+              const stage = req.body.stage
+              const type = req.body.type
+              const patient_name = req.body.patient_name
+              const patient_id = req.body.patient_id
+              const clinic_id = req.body.clinic_id
+              const img_no = req.body.img_no
+              const date = req.body.date
+              const length = req.body.length
+
+
+  const sql = (`SELECT * FROM dentist.teeth_info WHERE  patient_id LIKE '${patient_id}'AND clinic_id LIKE '${clinic_id}'AND img_no LIKE '${img_no}' AND patient_name LIKE '${patient_name}' `)
+     connection.query(sql,(err,data)=>{
+      if(err){
+        console.log(err)
+        res.status(500).send(err)
+      }
+      if(data){
+        // console.log(data.length,length);
+        if(data.length >= length){
+          res.status(400).json({message:"no need to insert"})
+        }else{
+          // res.status(200).json({message:"no need to insert"})
+            const sql = ("INSERT INTO dentist.teeth_info (`name`,`teeth_no`,`parameter`,`surface`,`stage`,`type`,`patient_name`,`patient_id`,`clinic_id`,`img_no`,`date`) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+          connection.query(sql,[name,teeth_no,parameter,surface,stage,type,patient_name,patient_id,clinic_id,img_no,date],(err,data)=>{
+            if(err){
+              console.log(err)
+              res.status(500).send(err)
+            }
+            if(data){
+              res.status(200).send(data)
+            }
+          })
+        }
+      }
+    })
+
+    
+})
+
+app.get('/teeth_info',(req,res)=>{
+
+
+              // const patient_name = req.headers.patient_name
+              const patient_id = req.headers.patient_id
+              const clinic_id = req.headers.clinic_id
+              const img_no = req.headers.img_no
+          
+
+     const sql = (`SELECT * FROM dentist.teeth_info WHERE  patient_id LIKE '${patient_id}'AND clinic_id LIKE '${clinic_id}'AND img_no LIKE '${img_no}' `)
+     connection.query(sql,(err,data)=>{
+      if(err){
+        console.log(err)
+        res.status(500).send(err)
+      }
+      if(data){
+        res.status(200).send(data)
+      }
+    })
+})
+
+app.delete('/teeth_info',(req,res)=>{
+
+
+          // const patient_name = req.headers.patient_name
+          const patient_id = req.headers.patient_id
+          const clinic_id = req.headers.clinic_id
+          const img_no = req.headers.img_no
+          const tooth_id = req.headers.tooth_id
+
+     const sql = (`DELETE FROM dentist.teeth_info WHERE id = '${tooth_id}' AND patient_id = '${patient_id}'AND clinic_id = '${clinic_id}'AND img_no = '${img_no}' `)
+     connection.query(sql,(err,data)=>{
+      if(err){
+        console.log(err)
+        res.status(500).send(err)
+      }
+      if(data){
+        res.status(200).send(data)
+      }
+    })
+})
+
+
+app.post('/join_org',(req,res)=>{
+
+  const email = req.body.email
+  const password = req.body.password
+  const clinic_name = req.body.clinic_name
+  const clinic_id = req.body.clinic_id
+
+  const sql = "SELECT * FROM dentist.login WHERE clinic_name =? AND clinic_id = ?"
+  
+  connection.query(sql,[clinic_name,clinic_id],(err,data)=>{
+
+    if(err){
+      console.log(err);
+      res.status(500).send(err)
+    } 
+    if (data){
+  
+      if(data.length > 0){
+        const sql = 'INSERT INTO dentist.login (`Email`,`password`,`clinic_id`,`clinic_name`) VALUES (?,?,?,?)'
+
+        bcrypt.genSalt(saltsRounds, function(err, salt) {
+          bcrypt.hash(password, salt, function(err, hash) {
+            connection.query(sql,[email, hash,clinic_id, clinic_name],(err,data2)=>{
+              if(err){
+                console.log(err);
+                res.status(500).send(err)
+              }
+      
+              if(data2){
+                const email_name = email.split("@")[0]
+              //  res.json({message:"clinic is added",clinic_id:clinic_id,clinic_name:clinic_name})
+               const user = {name : email_name,id:data2.insertId}
+               const accessToken = jwt.sign(user,process.env.SECRET_KEY)
+            
+               res.json({message:"clinic is added",clinic_id:clinic_id,clinic_name:clinic_name,accessToken:accessToken})
+              }
+              
+      
+            })
+      
+           });
+        });
+      }
+     
+    }
+  
+  })
+
+  
+})
+
+
+
+app.post("/teeth_comments",(req,res)=>{
+  const comment = req.body.comment
+  const clinic_id = req.body.clinic_id
+  const user = req.body.user
+  const img_no = req.body.img_no
+  const tooth_id = req.body.tooth_id
+  const patient_id = req.body.patient_id
+  const date = req.body.date
+
+ jwt.verify(user,process.env.SECRET_KEY,(err,user2)=>{
+    if(err){
+      res.status(500).send(err)
+    }else{
+      // res.status(200).send(JSON.stringify({islogged:true,user:user}))
+  
+       const sql = ("INSERT INTO  dentist.comments (comment,user,date,tooth_id,patient_id,clinic_id,img_no) values (?,?,?,?,?,?,?) ")
+      //  const sql = (`UPDATE dentist.comments  SET comment = '${comment}' , user = '${user2.name}', date = '${date}'  WHERE id = '${tooth_id}' AND patient_id = '${patient_id}'AND clinic_id = '${clinic_id}'AND img_no = '${img_no}' `)
+       connection.query(sql,[comment,user2.name,date,tooth_id,patient_id,clinic_id,img_no],(err,data)=>{
+      if(err){
+        console.log(err)
+        res.status(500).send(err)
+      }
+      if(data){
+        res.json({message:"comment added"})
+      }
+    })
+   
+      }
+  })
+ 
+})
+app.put("/teeth_comments",(req,res)=>{
+  const comment_id = req.body.comment_id
+  const clinic_id = req.body.clinic_id
+  const img_no = req.body.img_no
+  const tooth_id = req.body.tooth_id
+  const patient_id = req.body.patient_id
+  const sub_comment = JSON.stringify(req.body.sub_comment)
+  // const user = req.body.user
+  // const date = req.body.date
+
+//  jwt.verify(user,process.env.SECRET_KEY,(err,user2)=>{
+//     if(err){
+//       res.status(500).send(err)
+//     }else{
+      // res.status(200).send(JSON.stringify({islogged:true,user:user}))
+  
+       
+      const sql = ("UPDATE dentist.comments SET sub_comment=? WHERE comments_id = ? AND tooth_id=? AND patient_id=? AND clinic_id=? AND img_no=? ")
+      // const sql = (`UPDATE dentist.comments  SET sub_comment='${sub_comment}'  WHERE comment = '${comment}' AND tooth_id = '${tooth_id}' AND patient_id = '${patient_id}'AND clinic_id = '${clinic_id}'AND img_no = '${img_no}' `)
+    
+      connection.query(sql,[sub_comment,comment_id,tooth_id,patient_id,clinic_id,img_no],(err,data)=>{
+      if(err){
+        console.log(err)
+        res.status(500).send(err)
+      }
+      if(data){
+        res.json({message:"comment added"})
+      }
+    })
+   
+      // }
+  // })
+ 
+})
+app.get("/teeth_comments_info",(req,res)=>{
+  const comment_id = req.headers.comment_id
+  const clinic_id = req.headers.clinic_id
+  const img_no = req.headers.img_no
+  const tooth_id = req.headers.tooth_id
+  const patient_id = req.headers.patient_id
+
+//  jwt.verify(user,process.env.SECRET_KEY,(err,user2)=>{
+//     if(err){
+//       res.status(500).send(err)
+//     }else{
+      // res.status(200).send(JSON.stringify({islogged:true,user:user}))
+  
+       
+      const sql = ("SELECT * FROM dentist.comments WHERE comments_id = ? AND tooth_id=? AND patient_id=? AND clinic_id=? AND img_no=? ")
+      // const sql = (`UPDATE dentist.comments  SET sub_comment='${sub_comment}'  WHERE comment = '${comment}' AND tooth_id = '${tooth_id}' AND patient_id = '${patient_id}'AND clinic_id = '${clinic_id}'AND img_no = '${img_no}' `)
+    
+      connection.query(sql,[comment_id,tooth_id,patient_id,clinic_id,img_no],(err,data)=>{
+      if(err){
+        console.log(err)
+        res.status(500).send(err)
+      }
+      if(data){
+        res.send(data)
+      }
+    })
+   
+      // }
+  // })
+ 
+})
+
+app.get("/teeth_comments",(req,res)=>{
+  const clinic_id = req.headers.clinic_id
+  const img_no = req.headers.img_no
+  const tooth_id = req.headers.tooth_id
+  const patient_id = req.headers.patient_id
+  
+ const sql = "SELECT * FROM dentist.comments WHERE img_no =? AND clinic_id = ? AND tooth_id = ? AND patient_id = ?"
+
+connection.query(sql,[img_no,clinic_id,tooth_id,patient_id],(err,data)=>{
+  if(err){
+    console.log(err)
+    res.status(500).send(err)
+  }
+  if(data){
+    res.send(data)
+  }
+})
+})
 
 app.listen(8082,()=>{
   console.log("i'm listening to 8082")
