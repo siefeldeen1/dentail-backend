@@ -25,6 +25,7 @@ const dummy = require('./dummy.json')
 const dummy2 = require('./dummy2.json')
 const { json } = require('express')
 const Jimp = require('jimp');
+const { connect } = require('http2')
 
 app.use(
   cookieSession({ name: "session", keys: ["lama"], maxAge: 24 * 60 * 60 * 100 })
@@ -51,9 +52,19 @@ app.use(passport.session());
 
 app.use("/auth", authRoute);
 
+const db_config = {
+    host:"database.apture.ai",
+    user:"db_user",
+    password:"eQt4$JQk8tAifWXv0^!1AiI&0B5ge#",
+}
 
-const connection = mysql.createPool('mysql://5md95ivkiw85id6l0bau:pscale_pw_TGZSa8SSGRElvxRB6jQgakzpiwpyRpoPwY7Jlk0VIx@aws-eu-west-2.connect.psdb.cloud/dentist?ssl={"rejectUnauthorized":true}')
-// const connection = mysql.createPool('mysql://m75jecg6xa68oswmo9lr:pscale_pw_u2qNamIp6LGUrr8B4Ekc85vILdtUUB1Px1gzRslsubb@aws-eu-west-2.connect.psdb.cloud/login-data?ssl={"rejectUnauthorized":true}')
+const connection = mysql.createPool(db_config)
+
+// dentist db
+//const connection = mysql.createPool('mysql://5md95ivkiw85id6l0bau:pscale_pw_TGZSa8SSGRElvxRB6jQgakzpiwpyRpoPwY7Jlk0VIx@aws-eu-west-2.connect.psdb.cloud/dentist?ssl={"rejectUnauthorized":true}')
+
+// not working old
+// const connection2 = mysql.createPool('mysql://m75jecg6xa68oswmo9lr:pscale_pw_u2qNamIp6LGUrr8B4Ekc85vILdtUUB1Px1gzRslsubb@aws-eu-west-2.connect.psdb.cloud/login-data?ssl={"rejectUnauthorized":true}')
 
 // passport.use(new FacebookStrategy({
 //   clientID: process.env.FB_ID_KEY,
@@ -148,7 +159,7 @@ app.post('/login',(req,res)=>{
           const email_name = data[0].Email.split("@")[0]
           const user = {name : email_name,first_name:data[0].first,last_name:data[0].last}
           const accessToken = jwt.sign(user,process.env.SECRET_KEY)
-          res.json({message:"clinic is added",clinic_id:data[0].clinic_id,clinic_name:data[0].clinic_name,accessToken:accessToken})
+          res.json({message:"clinic is added",clinic_id:data[0].clinic_id,clinic_name:`${data[0].clinic_name}_${data[0].clinic_id}`,accessToken:accessToken})
             // res.status(200).json({message:"allowed",clinic_id:data[0].clinic_id,clinic_name:data[0].clinic_name})
           } else{
             res.status(400).json({message:"password or email is incorrect"})
@@ -292,58 +303,139 @@ app.post('/clinic_info',(req,res)=>{
              const acc_email = req.body.acc_email
              const acc_password = req.body.acc_password
 
-            console.log(acc_email,acc_password);
-             const sql = "INSERT INTO  dentist.clinic_Info (`business`,`first_name`,`last_name`,`email_off`,`phone_off`,`email`,`phone`,`country`,`state`,`city`,`zip_code`,`address`,`facebook`,`twitter`,`instagram`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            // console.log(acc_email,acc_password);
 
-             connection.query(sql,[business,first_name,last_name,email_off,phone_off,email,phone,country,state,city,zip_code,address,facebook,twitter,instagram],(err,data)=>{
-              if(err){
-                console.log(err);
-                res.status(500).send(err)
-              }
+            const sql = 'INSERT INTO dentist.login (`Email`,`password`,`clinic_name`,`first`,`last`) VALUES (?,?,?,?,?)'
+
+            bcrypt.genSalt(saltsRounds, function(err, salt) {
+              bcrypt.hash(acc_password.value, salt, function(err, hash) {
+                connection.query(sql,[acc_email.value, hash,  business,first,last],(err,data2)=>{
+                  if(err){
+                    console.log(err);
+                    res.status(500).send(err)
+                  }
           
-              if(data){
-                
-                const sql = 'INSERT INTO dentist.login (`Email`,`password`,`clinic_id`,`clinic_name`,`first`,`last`) VALUES (?,?,?,?,?,?)'
-
-                bcrypt.genSalt(saltsRounds, function(err, salt) {
-                  bcrypt.hash(acc_password.value, salt, function(err, hash) {
-                    connection.query(sql,[acc_email.value, hash, data.insertId, business,first,last],(err,data2)=>{
-                      if(err){
-                        console.log(err);
-                        res.status(500).send(err)
-                      }
+                  if(data2){
+                    // console.log(acc_email.value);
+                    const email_name = acc_email.value.split("@")[0]
+                     const user = {name : email_name,id:data2.insertId,first_name:first,last_name:last}
+                     const accessToken = jwt.sign(user,process.env.SECRET_KEY)
               
-                      if(data2){
-                        console.log(acc_email.value);
-                        const email_name = acc_email.value.split("@")[0]
-                         const user = {name : email_name,id:data2.insertId,first_name:first,last_name:last}
-                         const accessToken = jwt.sign(user,process.env.SECRET_KEY)
-                         res.json({message:"clinic is added",clinic_id:data.insertId,clinic_name:business,accessToken:accessToken})
-                      }
-                      
-              
-                    })
-              
-                   });
-                });
+
+                     const sqlDB = `CREATE DATABASE ${business}_${data2.insertId}`
+                      connection.query(sqlDB,(err)=>{
+                        if(err){
+                          console.log(err);
+                          res.status(500).json({message:"Something went wrong"})
+                        }else{
+                          const sql_clinic_info =' CREATE TABLE ' + `${business}_${data2.insertId}.clinic_Info `+'( `business` VARCHAR(500), `first_name` VARCHAR(255), `last_name` VARCHAR(255), `email_off` VARCHAR(255), `email` VARCHAR(255), `phone_off` VARCHAR(400), `phone` VARCHAR(400), `facebook` VARCHAR(255), `twitter` VARCHAR(255),`instagram` VARCHAR(255),`address` VARCHAR(255),`city` VARCHAR(255),`state` VARCHAR(255),`country` VARCHAR(255),`zip_code` VARCHAR(400), `id` int auto_increment primary key ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;'
+                          const sql_comment =' CREATE TABLE ' + `${business}_${data2.insertId}.comments `+'( `comment` LONGTEXT, `tooth_id` VARCHAR(255), `patient_id` VARCHAR(255), `clinic_id` VARCHAR(255), `img_no` VARCHAR(255), `user` VARCHAR(400), `date` VARCHAR(400), `sub_comment` LONGTEXT,  `comments_id` int auto_increment primary key ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;'
+                          const sql_login =' CREATE TABLE ' + `${business}_${data2.insertId}.login `+'( `Email` VARCHAR(500), `password` VARCHAR(255), `clinic_name` VARCHAR(255), `first` VARCHAR(255), `last` VARCHAR(255), `clinic_id` int auto_increment primary key ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;'
+                          const sql_patient_detials =' CREATE TABLE ' + `${business}_${data2.insertId}.patient_detials `+'( `name` VARCHAR(200), `email` VARCHAR(255), `phone` VARCHAR(255), `address` VARCHAR(255), `birth_date` VARCHAR(255), `emergency_contact` VARCHAR(400), `preference` VARCHAR(400), `gender` VARCHAR(255), `guardian` VARCHAR(255),`notes` VARCHAR(255),`country` VARCHAR(255),`state` VARCHAR(255),`city` VARCHAR(255),`zip_code` VARCHAR(400),`last_name` VARCHAR(255),`clinic_id` VARCHAR(400),`clinic_name` VARCHAR(255),`imgs` LONGTEXT,`data` LONGTEXT,`added_date` LONGTEXT, `patient_id` int auto_increment primary key ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;'
+                          const sql_schedule_data =' CREATE TABLE ' + `${business}_${data2.insertId}.schedule_data `+'( `title` VARCHAR(500), `start` VARCHAR(255), `end` VARCHAR(255), `descr` VARCHAR(255), `allday` VARCHAR(255), `clinic_id` VARCHAR(400), `clinic_name` VARCHAR(400), `id` int auto_increment primary key ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;'
+                          const sql_sub_comment =' CREATE TABLE ' + `${business}_${data2.insertId}.sub_comment `+'( `sub_comment` LONGTEXT, `comment_id` VARCHAR(2505), `img_no` VARCHAR(255), `patient_id` INT, `tooth_id` INT, `clinic_id` INT, `user` VARCHAR(2000),`date` VARCHAR(2000), `sub_comment_id` int auto_increment primary key ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;'
+                          const sql_teeth_info =' CREATE TABLE ' + `${business}_${data2.insertId}.teeth_info `+'( `name` LONGTEXT, `teeth_no` INT, `value` VARCHAR(2550), `type` VARCHAR(2550), `patient_name` VARCHAR(2050), `patient_id` VARCHAR(2050), `clinic_id` VARCHAR(2000),`img_no` INT,`parameter` VARCHAR(405),`surface` VARCHAR(405),`stage` VARCHAR(405),`date` VARCHAR(405),`comment` LONGTEXT,`user` VARCHAR(1000),`isdeleted` VARCHAR(405),  `id` int auto_increment primary key ) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;'
+                         
+                          connection.query(sql_clinic_info,(org_err)=>{
+                          if(org_err){
+                            console.log(org_err);
+                            res.status(500).json({message:"Something went wrong in org sql"})
+                        }else{
+                            connection.query(sql_comment,(comment_err)=>{
+                                if(comment_err){
+                                console.log(comment_err);
+                                res.status(500).json({message:"Something went wrong in org sql"})
+                               }else{
+                                    connection.query(sql_login,(login_err)=>{
+                                      if(login_err){
+                                        console.log(login_err);
+                                        res.status(500).json({message:"Something went wrong in org sql"})
+                                       }else{
+                                            connection.query(sql_patient_detials,(patient_err)=>{
+                                              if(patient_err){
+                                                console.log(patient_err);
+                                                res.status(500).json({message:"Something went wrong in org sql"})
+                                               }else{
+                                                  connection.query(sql_schedule_data,(schedule_err)=>{
+                                                    if(schedule_err){
+                                                      console.log(schedule_err);
+                                                      res.status(500).json({message:"Something went wrong in org sql"})
+                                                     }else{
+                                                          connection.query(sql_sub_comment,(sub_com_err)=>{
+                                                            if(sub_com_err){
+                                                              console.log(sub_com_err);
+                                                              res.status(500).json({message:"Something went wrong in org sql"})
+                                                             }else{
+                                                                  connection.query(sql_teeth_info,(teeth_err)=>{
+                                                                    if(teeth_err){
+                                                                      console.log(teeth_err);
+                                                                      res.status(500).json({message:"Something went wrong in org sql"})
+                                                                     }else{
+
+                                                                         const sql = "INSERT INTO "+ `${business}_${data2.insertId}.clinic_Info`+ " (`business`,`first_name`,`last_name`,`email_off`,`phone_off`,`email`,`phone`,`country`,`state`,`city`,`zip_code`,`address`,`facebook`,`twitter`,`instagram`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+
+                                                                        connection.query(sql,[business,first_name,last_name,email_off,phone_off,email,phone,country,state,city,zip_code,address,facebook,twitter,instagram],(err,data)=>{
+                                                                         if(err){
+                                                                          console.log(err);
+                                                                          res.status(500).send(err)
+                                                                         }
+                                                                    
+                                                                           if(data){
+                                                                          
+                                                                             res.json({message:"clinic is added",clinic_id:data2.insertId,clinic_name:`${business}_${data2.insertId}`,accessToken:accessToken})
+
+                                                                          //  connection.query(sql,[data.insertId,business],(err,data2)=>{
+                                                                          //   if(err){
+                                                                          //     res.status(500).send(err)
+                                                                          //   }
+                                                                          //   if(data2){
+                                                                          //     res.json({message:"clinic is added"})
+                                                                          //   }
+                                                                          // })
+                                                                        
+                                                                        }
+                                                                      })
+                                                                     }
+                                                                  })
+                                                             }
+                                                          })
+                                                     }
+                                                  })
+                                               }
+                                            }) 
+                                       }
+                                    })
+                                }
+                            })
+                        }
+                        })
+                        }
+                      })
 
 
 
+                 
+                  }
+                  
+          
+                })
+          
+               });
+            });
 
-                // connection.query(sql,[data.insertId,business],(err,data2)=>{
-                //   if(err){
-                //     res.status(500).send(err)
-                //   }
-                //   if(data2){
-                //     res.json({message:"clinic is added"})
-                //   }
-                // })
-              
-              }
-            })
+           
           
 
             })
+
+
+
+app.post('/create_org',(req,res)=>{
+
+})
+
+
+
 
 
 app.post('/patient_details',(req,res)=>{
@@ -373,9 +465,9 @@ app.post('/patient_details',(req,res)=>{
   const data = JSON.stringify(req.body.data)
 
 
-  console.log(clinic_name);
+  // console.log(clinic_name);
 if(patient_id.length < 1){
-  const sql = "INSERT INTO  dentist.patient_detials (`name`,`last_name`,`email`,`phone`,`country`,`state`,`city`,`zip_code`,`address`,`birth_date`,`emergency_contact`,`preference`,`gender`,`guardian`,`notes`,`clinic_id`,`clinic_name`,`imgs`,`data`,`added_date`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+  const sql = "INSERT INTO "+  `${clinic_name}.patient_detials`+ "(`name`,`last_name`,`email`,`phone`,`country`,`state`,`city`,`zip_code`,`address`,`birth_date`,`emergency_contact`,`preference`,`gender`,`guardian`,`notes`,`clinic_id`,`clinic_name`,`imgs`,`data`,`added_date`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
   connection.query(sql,[Name,last_name,email,phone,country,state,city,zip_code,address,birth,emergency,preference,gender,guardian,notes,clinic_id,clinic_name,imgs,data,added_date],(err,data)=>{
     if(err){
       console.log(err);
@@ -389,7 +481,7 @@ if(patient_id.length < 1){
 
   })
 }else{
-  const sql = "INSERT INTO  dentist.patient_detials (`name`,`last_name`,`email`,`phone`,`country`,`state`,`city`,`zip_code`,`address`,`birth_date`,`emergency_contact`,`preference`,`gender`,`guardian`,`patient_id`,`notes`,`clinic_id`,`clinic_name`,`added_date`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+  const sql = "INSERT INTO"+ `${clinic_name}.patient_detials`+ "(`name`,`last_name`,`email`,`phone`,`country`,`state`,`city`,`zip_code`,`address`,`birth_date`,`emergency_contact`,`preference`,`gender`,`guardian`,`patient_id`,`notes`,`clinic_id`,`clinic_name`,`added_date`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
   connection.query(sql,[Name,last_name,email,phone,country,state,city,zip_code,address,birth,emergency,preference,gender,guardian,patient_id,notes,clinic_id,clinic_name,added_date],(err,data)=>{
     if(err){
       console.log(err);
@@ -413,7 +505,7 @@ app.get('/render_imgs',(req,res)=>{
   const clinic_name = req.headers.clinic_name
   const patient_id = req.headers.patient_id 
 
-  const sql = `SELECT * FROM dentist.patient_detials WHERE clinic_id LIKE '${clinic_id}%' AND patient_id LIKE '${patient_id}'`
+  const sql = `SELECT * FROM ${clinic_name}.patient_detials WHERE clinic_id LIKE '${clinic_id}%' AND patient_id LIKE '${patient_id}'`
  connection.query(sql,(err,data)=>{
    if(err){
      console.log(err);
@@ -435,7 +527,7 @@ app.get('/render_patients',(req,res)=>{
  const clinic_id = req.headers.clinic_id
  const clinic_name = req.headers.clinic_name
   
- const sql = `SELECT * FROM dentist.patient_detials WHERE clinic_id LIKE '${clinic_id}%'`
+ const sql = `SELECT * FROM ${clinic_name}.patient_detials WHERE clinic_id LIKE '${clinic_id}%'`
 connection.query(sql,(err,data)=>{
   if(err){
     console.log(err);
@@ -451,18 +543,19 @@ connection.query(sql,(err,data)=>{
 
 app.get('/patient_Img',(req,res)=>{
   const clinic_id = req.headers.clinic_id
+  const clinic_name = req.headers.clinic_name
   const patient_id = req.headers.patient_id
   const first = req.headers.first
   const last = req.headers.last
 
-  const sql =  `SELECT * FROM dentist.patient_detials WHERE name LIKE '${first}%' AND clinic_id LIKE '${clinic_id}%' AND last_name LIKE '${last}%' AND patient_id LIKE '${patient_id}%'  `
+  const sql =  `SELECT * FROM ${clinic_name}.patient_detials WHERE name LIKE '${first}%' AND clinic_id LIKE '${clinic_id}%' AND last_name LIKE '${last}%' AND patient_id LIKE '${patient_id}%'  `
 
   connection.query(sql,(err,data)=>{
     if(err){
       console.log(err);
       res.status(500).send(err)
     }
-    console.log(sql);
+    // console.log(sql);
     if(data){
       console.log(data);
       res.send(data)
@@ -480,7 +573,7 @@ app.post('/insert',(req,res)=>{
   const Doctor = req.body.Doctor
   const Radiologist  = req.body.Radiologist 
 
-  console.log(Date);
+  // console.log(Date);
 
   const sql = "INSERT INTO dentist.form_det (`date`,`patient`,`practice`,`Lab`,`Doctor`,`Radiologist`) VALUES (?,?,?,?,?,?)"
   connection.query(sql,[Date,Patient_Name,Practice,Lab,Doctor,Radiologist],(err,data)=>{
@@ -504,12 +597,12 @@ app.get('/Search',(req,res)=>{
   const last_name = req.headers.last_name
   const phone = req.headers.phone
   const birth = req.headers.birth
-
+  const clinic_name = req.headers.clinic_name
   // console.log(name,last_name,phone,birth);
-  const sql =  `SELECT * FROM dentist.patient_detials WHERE name LIKE '${name}%' AND phone LIKE '${phone}%' AND last_name LIKE '${last_name}%' AND birth_date LIKE '${birth}%'  `
+  const sql =  `SELECT * FROM ${clinic_name}.patient_detials WHERE name LIKE '${name}%' AND phone LIKE '${phone}%' AND last_name LIKE '${last_name}%' AND birth_date LIKE '${birth}%'  `
   // const sql =  "SELECT * FROM dentist.patient_detials WHERE name LIKE"+ ` '%${name}%' or phone LIKE '%${phone}%' or last_name LIKE '%${last_name}%' or birth_date LIKE '%${birth}%'  `
 
-    console.log(sql);
+    // console.log(sql);
 
   connection.query(sql,(err,data)=>{
    if(err){
@@ -518,7 +611,7 @@ app.get('/Search',(req,res)=>{
    }
  
    if(data){
-    console.log("data",data);
+    // console.log("data",data);
        if(data.length > 0){
            res.send(data)
        }else{
@@ -619,8 +712,9 @@ app.put('/update',(req,res)=>{
 app.post('/comments',(req,res)=>{
   const comment = req.body.comment
   const teeth_no = req.body.teeth_no
+  const clinic_name = req.body.clinic_name
 
-  const sql = "INSERT INTO dentist.comments (`comment`,`teeth_no`) VALUES(?,?) "
+  const sql = "INSERT INTO "+ `${clinic_name}.comments` +"(`comment`,`teeth_no`) VALUES(?,?) "
 
   connection.query(sql,[comment,teeth_no],(err,data)=>{
     if(err){
@@ -650,7 +744,7 @@ app.post('/json_test',(req,res)=>{
   const data =  req.body.data
 
 
-  console.log(data);
+  // console.log(data);
 
 
 })
@@ -662,8 +756,9 @@ app.post('/appointment_date',(req,res)=>{
   const end = req.body.end
   const descr = req.body.descr
   const clinic_id = req.body.clinic_id
+  const clinic_name = req.body.clinic_name
 
-   const sql = "INSERT INTO  dentist.schedule_data (`title`,`start`,`end`,`descr`,`clinic_id`) VALUES (?,?,?,?,?)"
+   const sql = "INSERT INTO " + `${clinic_name}.schedule_data` + "(`title`,`start`,`end`,`descr`,`clinic_id`) VALUES (?,?,?,?,?)"
   connection.query(sql,[title,start,end,descr,clinic_id],(err,data)=>{
     if(err){
       console.log(err)
@@ -681,7 +776,7 @@ app.get("/dates_appoint",(req,res)=>{
     const clinic_id = req.headers.clinic_id
     const clinic_name = req.headers.clinic_name
 
-  const sql = "SELECT * FROM dentist.schedule_data WHERE `clinic_id`= ?"
+  const sql = "SELECT * FROM " + `${clinic_name}.schedule_data `+ "WHERE `clinic_id`= ?"
   connection.query(sql,[clinic_id],(err,data)=>{
     if(err){
       console.log(err)
@@ -696,11 +791,12 @@ app.get("/dates_appoint",(req,res)=>{
 app.put("/dates_appoint",(req,res)=>{
 
   const clinic_id = req.body.clinic_id
+  const clinic_name = req.body.clinic_name
   const start = req.body.start
   const end = req.body.end
   const id = req.body.id
 
-  const sql = "UPDATE dentist.schedule_data SET start=? , end=?  WHERE id = ?"
+  const sql = "UPDATE" + `${clinic_name}.schedule_data` +"SET start=? , end=?  WHERE id = ?"
   connection.query(sql,[start,end,id],(err,data)=>{
     if(err){
       console.log(err)
@@ -714,10 +810,11 @@ app.put("/dates_appoint",(req,res)=>{
 app.get("/dates_appoint_info",(req,res)=>{
 
   const clinic_id = req.headers.clinic_id
+  const clinic_name = req.headers.clinic_name
   const title = req.headers.title
   const id = req.headers.id
 
-  const sql = `SELECT * FROM dentist.schedule_data WHERE title LIKE '${title}' AND  id LIKE '${id}' AND clinic_id LIKE '${clinic_id}'`
+  const sql = `SELECT * FROM ${clinic_name}.schedule_data WHERE title LIKE '${title}' AND  id LIKE '${id}' AND clinic_id LIKE '${clinic_id}'`
   connection.query(sql,(err,data)=>{
     if(err){
       console.log(err)
@@ -732,10 +829,11 @@ app.get("/dates_appoint_info",(req,res)=>{
 app.delete("/dates_appoint",(req,res)=>{
 
   const clinic_id = req.headers.clinic_id
+  const clinic_name = req.headers.clinic_name
   const title = req.headers.title
   const id = req.headers.id
 
-  const sql = "DELETE FROM dentist.schedule_data WHERE `title` = ? AND  `id` = ? AND `clinic_id` = ?"
+  const sql = "DELETE FROM " +`${clinic_name}.schedule_data` + "WHERE `title` = ? AND  `id` = ? AND `clinic_id` = ?"
   connection.query(sql,[title,id,clinic_id],(err,data)=>{
     if(err){
       console.log(err)
@@ -750,14 +848,15 @@ app.delete("/dates_appoint",(req,res)=>{
 app.put("/dates_appoint_info",(req,res)=>{
 
   const clinic_id = req.body.clinic_id
+  const clinic_name = req.body.clinic_name
   // const start = req.body.start 
   // const end = req.body.end
   const id = req.body.id
   const descr = req.body.descr
   const title = req.body.title
-  console.log(title);
+  // console.log(title);
 
-  const sql = "UPDATE dentist.schedule_data SET descr=?,title=?  WHERE id = ? AND clinic_id=? "
+  const sql = "UPDATE " + `${clinic_name}.schedule_data` +"SET descr=?,title=?  WHERE id = ? AND clinic_id=? "
   connection.query(sql,[descr,title,id,clinic_id],(err,data)=>{
     if(err){
       console.log(err)
@@ -781,11 +880,12 @@ app.post('/teeth_info',(req,res)=>{
               const patient_name = req.body.patient_name
               const patient_id = req.body.patient_id
               const clinic_id = req.body.clinic_id
+              const clinic_name = req.body.clinic_name
               const img_no = req.body.img_no
               const date = req.body.date
 
 
-     const sql = ("INSERT INTO dentist.teeth_info (`name`,`teeth_no`,`parameter`,`surface`,`stage`,`type`,`patient_name`,`patient_id`,`clinic_id`,`img_no`,`date`) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+     const sql = ("INSERT INTO " + `${clinic_name}.teeth_info` +"(`name`,`teeth_no`,`parameter`,`surface`,`stage`,`type`,`patient_name`,`patient_id`,`clinic_id`,`img_no`,`date`) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
      connection.query(sql,[name,teeth_no,parameter,surface,stage,type,patient_name,patient_id,clinic_id,img_no,date],(err,data)=>{
       if(err){
         console.log(err)
@@ -808,12 +908,13 @@ app.post('/teeth_info_first',(req,res)=>{
               const patient_name = req.body.patient_name
               const patient_id = req.body.patient_id
               const clinic_id = req.body.clinic_id
+              const clinic_name = req.body.clinic_name
               const img_no = req.body.img_no
               const date = req.body.date
               const length = req.body.length
 
 
-  const sql = (`SELECT * FROM dentist.teeth_info WHERE  patient_id LIKE '${patient_id}'AND clinic_id LIKE '${clinic_id}'AND img_no LIKE '${img_no}' AND patient_name LIKE '${patient_name}' `)
+  const sql = (`SELECT * FROM ${clinic_name}.teeth_info WHERE  patient_id LIKE '${patient_id}'AND clinic_id LIKE '${clinic_id}'AND img_no LIKE '${img_no}' AND patient_name LIKE '${patient_name}' `)
      connection.query(sql,(err,data)=>{
       if(err){
         console.log(err)
@@ -825,7 +926,7 @@ app.post('/teeth_info_first',(req,res)=>{
           res.status(400).json({message:"no need to insert"})
         }else{
           // res.status(200).json({message:"no need to insert"})
-            const sql = ("INSERT INTO dentist.teeth_info (`name`,`teeth_no`,`parameter`,`surface`,`stage`,`type`,`patient_name`,`patient_id`,`clinic_id`,`img_no`,`date`) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+            const sql = ("INSERT INTO "+ `${clinic_name}.teeth_info `+"(`name`,`teeth_no`,`parameter`,`surface`,`stage`,`type`,`patient_name`,`patient_id`,`clinic_id`,`img_no`,`date`) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
           connection.query(sql,[name,teeth_no,parameter,surface,stage,type,patient_name,patient_id,clinic_id,img_no,date],(err,data)=>{
             if(err){
               console.log(err)
@@ -848,10 +949,11 @@ app.get('/teeth_info',(req,res)=>{
               // const patient_name = req.headers.patient_name
               const patient_id = req.headers.patient_id
               const clinic_id = req.headers.clinic_id
+              const clinic_name = req.headers.clinic_name
               const img_no = req.headers.img_no
           
 
-     const sql = (`SELECT * FROM dentist.teeth_info WHERE  patient_id LIKE '${patient_id}'AND clinic_id LIKE '${clinic_id}'AND img_no LIKE '${img_no}' `)
+     const sql = (`SELECT * FROM ${clinic_name}.teeth_info WHERE  patient_id LIKE '${patient_id}'AND clinic_id LIKE '${clinic_id}'AND img_no LIKE '${img_no}' `)
      connection.query(sql,(err,data)=>{
       if(err){
         console.log(err)
@@ -869,10 +971,11 @@ app.delete('/teeth_info',(req,res)=>{
           // const patient_name = req.headers.patient_name
           const patient_id = req.headers.patient_id
           const clinic_id = req.headers.clinic_id
+          const clinic_name = req.headers.clinic_name
           const img_no = req.headers.img_no
           const tooth_id = req.headers.tooth_id
 
-     const sql = (`DELETE FROM dentist.teeth_info WHERE id = '${tooth_id}' AND patient_id = '${patient_id}'AND clinic_id = '${clinic_id}'AND img_no = '${img_no}' `)
+     const sql = (`DELETE FROM ${clinic_name}.teeth_info WHERE id = '${tooth_id}' AND patient_id = '${patient_id}'AND clinic_id = '${clinic_id}'AND img_no = '${img_no}' `)
      connection.query(sql,(err,data)=>{
       if(err){
         console.log(err)
@@ -894,7 +997,7 @@ app.post('/join_org',(req,res)=>{
   const first = req.body.first
   const last = req.body.last
 
-  const sql = "SELECT * FROM dentist.login WHERE clinic_name =? AND clinic_id = ?"
+  const sql = "SELECT * FROM "+ `${clinic_name}.login` +"WHERE clinic_name =? AND clinic_id = ?"
   
   connection.query(sql,[clinic_name,clinic_id],(err,data)=>{
 
@@ -905,7 +1008,7 @@ app.post('/join_org',(req,res)=>{
     if (data){
   
       if(data.length > 0){
-        const sql = 'INSERT INTO dentist.login (`Email`,`password`,`clinic_id`,`clinic_name`,`first`,`last`) VALUES (?,?,?,?,?,?)'
+        const sql = 'INSERT INTO '+`${clinic_name}.login `+'(`Email`,`password`,`clinic_id`,`clinic_name`,`first`,`last`) VALUES (?,?,?,?,?,?)'
 
         bcrypt.genSalt(saltsRounds, function(err, salt) {
           bcrypt.hash(password, salt, function(err, hash) {
@@ -921,7 +1024,7 @@ app.post('/join_org',(req,res)=>{
                const user = {name : email_name,id:data2.insertId,first_name:first,last_name:last}
                const accessToken = jwt.sign(user,process.env.SECRET_KEY)
             
-               res.json({message:"clinic is added",clinic_id:clinic_id,clinic_name:clinic_name,accessToken:accessToken})
+               res.json({message:"clinic is added",clinic_id:clinic_id,clinic_name:`${clinic_name}_${clinic_id}`,accessToken:accessToken})
               }
               
       
@@ -943,6 +1046,7 @@ app.post('/join_org',(req,res)=>{
 app.post("/teeth_comments",(req,res)=>{
   const comment = req.body.comment
   const clinic_id = req.body.clinic_id
+  const clinic_name = req.body.clinic_name
   const user = req.body.user
   const img_no = req.body.img_no
   const tooth_id = req.body.tooth_id
@@ -955,7 +1059,7 @@ app.post("/teeth_comments",(req,res)=>{
     }else{
       // res.status(200).send(JSON.stringify({islogged:true,user:user}))
   
-       const sql = ("INSERT INTO  dentist.comments (comment,user,date,tooth_id,patient_id,clinic_id,img_no) values (?,?,?,?,?,?,?) ")
+       const sql = ("INSERT INTO "+`${clinic_name}.comments `+"(comment,user,date,tooth_id,patient_id,clinic_id,img_no) values (?,?,?,?,?,?,?) ")
       //  const sql = (`UPDATE dentist.comments  SET comment = '${comment}' , user = '${user2.name}', date = '${date}'  WHERE id = '${tooth_id}' AND patient_id = '${patient_id}'AND clinic_id = '${clinic_id}'AND img_no = '${img_no}' `)
        connection.query(sql,[comment,user2.name,date,tooth_id,patient_id,clinic_id,img_no],(err,data)=>{
       if(err){
@@ -976,6 +1080,7 @@ app.post("/teeth_sub_comments",(req,res)=>{
   const sub_comment = req.body.sub_comment
   const comment_id = req.body.comment_id
   const clinic_id = req.body.clinic_id
+  const clinic_name = req.body.clinic_name
   const user = req.body.user
   const img_no = req.body.img_no
   const tooth_id = req.body.tooth_id
@@ -988,7 +1093,7 @@ app.post("/teeth_sub_comments",(req,res)=>{
     }else{
       // res.status(200).send(JSON.stringify({islogged:true,user:user}))
   
-       const sql = ("INSERT INTO dentist.sub_comment (sub_comment,comment_id,user,date,tooth_id,patient_id,clinic_id,img_no) values (?,?,?,?,?,?,?,?) ")
+       const sql = ("INSERT INTO "+ `${clinic_name}.sub_comment` +"(sub_comment,comment_id,user,date,tooth_id,patient_id,clinic_id,img_no) values (?,?,?,?,?,?,?,?) ")
       //  const sql = (`UPDATE dentist.comments  SET comment = '${comment}' , user = '${user2.name}', date = '${date}'  WHERE id = '${tooth_id}' AND patient_id = '${patient_id}'AND clinic_id = '${clinic_id}'AND img_no = '${img_no}' `)
        connection.query(sql,[sub_comment,comment_id,user2.name,date,tooth_id,patient_id,clinic_id,img_no],(err,data)=>{
       if(err){
@@ -1007,13 +1112,14 @@ app.post("/teeth_sub_comments",(req,res)=>{
 
 app.get("/teeth_sub_comments",(req,res)=>{
   const clinic_id = req.headers.clinic_id
+  const clinic_name = req.headers.clinic_name
   const img_no = req.headers.img_no
   const patient_id = req.headers.patient_id
 
 
 
   
-       const sql = ("SELECT * FROM dentist.sub_comment WHERE patient_id=? AND clinic_id=? AND img_no=?")
+       const sql = ("SELECT * FROM "+`${clinic_name}.sub_comment `+"WHERE patient_id=? AND clinic_id=? AND img_no=?")
      
        connection.query(sql,[patient_id,clinic_id,img_no],(err,data)=>{
       if(err){
@@ -1035,6 +1141,7 @@ app.get("/teeth_sub_comments",(req,res)=>{
 app.put("/teeth_comments",(req,res)=>{
   const comment_id = req.body.comment_id
   const clinic_id = req.body.clinic_id
+  const clinic_name = req.body.clinic_name
   const img_no = req.body.img_no
   const tooth_id = req.body.tooth_id
   const patient_id = req.body.patient_id
@@ -1049,7 +1156,7 @@ app.put("/teeth_comments",(req,res)=>{
       // res.status(200).send(JSON.stringify({islogged:true,user:user}))
   
        
-      const sql = ("UPDATE dentist.comments SET sub_comment=? WHERE comments_id = ? AND tooth_id=? AND patient_id=? AND clinic_id=? AND img_no=? ")
+      const sql = ("UPDATE"+ `${clinic_name}.comments` +"SET sub_comment=? WHERE comments_id = ? AND tooth_id=? AND patient_id=? AND clinic_id=? AND img_no=? ")
       // const sql = (`UPDATE dentist.comments  SET sub_comment='${sub_comment}'  WHERE comment = '${comment}' AND tooth_id = '${tooth_id}' AND patient_id = '${patient_id}'AND clinic_id = '${clinic_id}'AND img_no = '${img_no}' `)
     
       connection.query(sql,[sub_comment,comment_id,tooth_id,patient_id,clinic_id,img_no],(err,data)=>{
@@ -1069,6 +1176,7 @@ app.put("/teeth_comments",(req,res)=>{
 app.get("/teeth_comments_info",(req,res)=>{
   const comment_id = req.headers.comment_id
   const clinic_id = req.headers.clinic_id
+  const clinic_name = req.headers.clinic_name
   const img_no = req.headers.img_no
   const tooth_id = req.headers.tooth_id
   const patient_id = req.headers.patient_id
@@ -1080,7 +1188,7 @@ app.get("/teeth_comments_info",(req,res)=>{
       // res.status(200).send(JSON.stringify({islogged:true,user:user}))
   
        
-      const sql = ("SELECT * FROM dentist.comments WHERE comments_id = ? AND tooth_id=? AND patient_id=? AND clinic_id=? AND img_no=? ")
+      const sql = ("SELECT * FROM " +`${clinic_name}.comments`+" WHERE comments_id = ? AND tooth_id=? AND patient_id=? AND clinic_id=? AND img_no=? ")
       // const sql = (`UPDATE dentist.comments  SET sub_comment='${sub_comment}'  WHERE comment = '${comment}' AND tooth_id = '${tooth_id}' AND patient_id = '${patient_id}'AND clinic_id = '${clinic_id}'AND img_no = '${img_no}' `)
     
       connection.query(sql,[comment_id,tooth_id,patient_id,clinic_id,img_no],(err,data)=>{
@@ -1100,11 +1208,12 @@ app.get("/teeth_comments_info",(req,res)=>{
 
 app.get("/teeth_comments",(req,res)=>{
   const clinic_id = req.headers.clinic_id
+  const clinic_name = req.headers.clinic_name
   const img_no = req.headers.img_no
   const tooth_id = req.headers.tooth_id
   const patient_id = req.headers.patient_id
   
- const sql = "SELECT * FROM dentist.comments WHERE img_no =? AND clinic_id = ? AND tooth_id = ? AND patient_id = ?"
+ const sql = "SELECT * FROM "+ `${clinic_name}.comments` +" WHERE img_no =? AND clinic_id = ? AND tooth_id = ? AND patient_id = ?"
 
 connection.query(sql,[img_no,clinic_id,tooth_id,patient_id],(err,data)=>{
   if(err){
